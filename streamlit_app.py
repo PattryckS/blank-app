@@ -35,7 +35,7 @@ if st.button("Enviar Fotos", type="primary"):
 # --- ÁREA DO ORGANIZADOR COM SELEÇÃO DE LOTES ---
 st.markdown("---")
 with st.expander("🔒 Área do Organizador (Baixar Lotes Separados)"):
-    SENHA_CORRETA = "minha_senha_123"
+    SENHA_CORRETA = "4775"
     
     senha_digitada = st.text_input("Digite a senha de acesso:", type="password")
     
