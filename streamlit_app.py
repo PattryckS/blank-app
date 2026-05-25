@@ -1,62 +1,78 @@
 import streamlit as st
 import os
 import zipfile
-import io
+import datetime
 
-# Nome da pasta temporária no servidor da nuvem
-PASTA_DESTINO = "pasta_recebidos"
+# Pasta onde os arquivos ZIP de cada envio serão guardados
+PASTA_DESTINO = "lotes_recebidos"
 
 if not os.path.exists(PASTA_DESTINO):
     os.makedirs(PASTA_DESTINO)
 
 st.title("Envie suas fotos aqui! 📸")
-st.write("Selecione e envie suas fotos com a qualidade original intacta.")
+st.write("Selecione suas fotos e clique em enviar. Cada envio gera um pacote fechado com qualidade original.")
 
 # Botão para upload de múltiplos arquivos
-fotos = st.file_uploader("Selecione todas as fotos de uma vez:", accept_multiple_files=True, type=["jpg", "png", "jpeg"])
+fotos = st.file_uploader("Selecione as fotos deste envio:", accept_multiple_files=True, type=["jpg", "png", "jpeg"])
 
 if st.button("Enviar Fotos", type="primary"):
     if fotos:
-        for foto in fotos:
-            caminho_arquivo = os.path.join(PASTA_DESTINO, foto.name)
-            with open(caminho_arquivo, "wb") as f:
-                f.write(foto.getbuffer())
+        # Gera um nome único para o ZIP baseado na data e hora exata do envio
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        nome_zip = f"envio_{timestamp}.zip"
+        caminho_zip = os.path.join(PASTA_DESTINO, nome_zip)
+        
+        # Cria o arquivo ZIP e coloca as fotos deste lote dentro dele
+        with zipfile.ZipFile(caminho_zip, "w") as zip_lote:
+            for foto in fotos:
+                # Lê os bytes da imagem e salva dentro do ZIP
+                zip_lote.writestr(foto.name, foto.getvalue())
                 
-        st.success(f"Sucesso! {len(fotos)} fotos foram enviadas.")
+        st.success(f"Sucesso! Esse lote de {len(fotos)} fotos foi enviado e salvo como `{nome_zip}`.")
     else:
         st.error("Por favor, selecione pelo menos uma foto antes de enviar.")
 
-# --- ÁREA DO ORGANIZADOR PARA BAIXAR AS FOTOS ---
+# --- ÁREA DO ORGANIZADOR COM SELEÇÃO DE LOTES ---
 st.markdown("---")
-with st.expander("🔒 Área do Organizador (Para você baixar as fotos)"):
-    # RECOMENDAÇÃO: Altere a senha abaixo para uma de sua preferência
-    SENHA_CORRETA = "4775"
+with st.expander("🔒 Área do Organizador (Baixar Lotes Separados)"):
+    SENHA_CORRETA = "minha_senha_123"
     
     senha_digitada = st.text_input("Digite a senha de acesso:", type="password")
     
     if senha_digitada == SENHA_CORRETA:
-        arquivos = os.listdir(PASTA_DESTINO)
+        # Lista apenas os arquivos ZIP dentro da pasta
+        arquivos_zip = [f for f in os.listdir(PASTA_DESTINO) if f.endswith('.zip')]
         
-        if arquivos:
-            st.write(f"Total de fotos recebidas até agora: **{len(arquivos)}**")
+        if arquivos_zip:
+            st.write(f"Total de lotes recebidos: **{len(arquivos_zip)}**")
             
-            # Cria o arquivo ZIP diretamente na memória do servidor
-            buffer = io.BytesIO()
-            with zipfile.ZipFile(buffer, "w") as zip_file:
-                for arquivo in arquivos:
-                    caminho_completo = os.path.join(PASTA_DESTINO, arquivo)
-                    zip_file.write(caminho_completo, arquivo)
+            # Cria uma caixinha de seleção para você escolher qual lote quer baixar
+            lote_selecionado = st.selectbox("Escolha o lote que deseja baixar:", sorted(arquivos_zip, reverse=True))
             
-            buffer.seek(0)
+            caminho_lote = os.path.join(PASTA_DESTINO, lote_selecionado)
             
-            # Botão para você fazer o download do pacote de fotos
-            st.download_button(
-                label="📥 Baixar Todas as Fotos (.ZIP)",
-                data=buffer,
-                file_name="fotos_originais.zip",
-                mime="application/zip"
-            )
+            # Lê o arquivo ZIP selecionado para disponibilizar para download
+            with open(caminho_lote, "rb") as f:
+                bytes_zip = f.read()
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.download_button(
+                    label=f"📥 Baixar {lote_selecionado}",
+                    data=bytes_zip,
+                    file_name=lote_selecionado,
+                    mime="application/zip",
+                    use_container_width=True
+                )
+                
+            with col2:
+                if st.button("🗑️ Apagar Todos os Lotes (Zerar)", type="secondary", use_container_width=True):
+                    for arq in arquivos_zip:
+                        os.remove(os.path.join(PASTA_DESTINO, arq))
+                    st.success("Todos os lotes foram apagados do servidor!")
+                    st.rerun()
         else:
-            st.info("Nenhuma foto foi enviada ainda.")
+            st.info("Nenhum lote de fotos foi enviado ainda.")
     elif senha_digitada != "":
         st.error("Senha incorreta!")
