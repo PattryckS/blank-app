@@ -32,39 +32,35 @@ if st.button("Enviar Fotos", type="primary"):
     else:
         st.error("Por favor, selecione pelo menos uma foto antes de enviar.")
 
-# --- ÁREA DO ORGANIZADOR COM SELEÇÃO DE LOTES ---
+# --- ÁREA DO ORGANIZADOR COM SELEÇÃO DE LOTES OTIMIZADA ---
 st.markdown("---")
 with st.expander("🔒 Área do Organizador (Baixar Lotes Separados)"):
-    SENHA_CORRETA = "4775"
+    SENHA_CORRETA = "minha_senha_123"
     
     senha_digitada = st.text_input("Digite a senha de acesso:", type="password")
     
     if senha_digitada == SENHA_CORRETA:
-        # Lista apenas os arquivos ZIP dentro da pasta
         arquivos_zip = [f for f in os.listdir(PASTA_DESTINO) if f.endswith('.zip')]
         
         if arquivos_zip:
             st.write(f"Total de lotes recebidos: **{len(arquivos_zip)}**")
             
-            # Cria uma caixinha de seleção para você escolher qual lote quer baixar
             lote_selecionado = st.selectbox("Escolha o lote que deseja baixar:", sorted(arquivos_zip, reverse=True))
-            
             caminho_lote = os.path.join(PASTA_DESTINO, lote_selecionado)
-            
-            # Lê o arquivo ZIP selecionado para disponibilizar para download
-            with open(caminho_lote, "rb") as f:
-                bytes_zip = f.read()
             
             col1, col2 = st.columns(2)
             
             with col1:
-                st.download_button(
-                    label=f"📥 Baixar {lote_selecionado}",
-                    data=bytes_zip,
-                    file_name=lote_selecionado,
-                    mime="application/zip",
-                    use_container_width=True
-                )
+                # CORREÇÃO AQUI: Abrimos o arquivo e passamos o 'f' direto, sem usar o .read()
+                # Isso faz o download via streaming e evita que o servidor caia por falta de RAM
+                with open(caminho_lote, "rb") as f:
+                    st.download_button(
+                        label=f"📥 Baixar {lote_selecionado}",
+                        data=f,  # Passando o arquivo aberto diretamente
+                        file_name=lote_selecionado,
+                        mime="application/zip",
+                        use_container_width=True
+                    )
                 
             with col2:
                 if st.button("🗑️ Apagar Todos os Lotes (Zerar)", type="secondary", use_container_width=True):
